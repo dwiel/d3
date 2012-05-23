@@ -8,10 +8,10 @@
     <style type="text/css">
 
 
-.node circle {
+.node rect {
   cursor: pointer;
   fill: #fff;
-  stroke: steelblue;
+  /* stroke: steelblue; */
   stroke-width: 1.5px;
 }
 
@@ -30,15 +30,15 @@ path.link {
   <body>
     <div id="body">
       <div id="footer">
-        d3.layout.tree
-        <div class="hint">click or option-click to expand or collapse</div>
+        Topology Editor
+        <div class="hint">click node for menu</div>
       </div>
     </div>
     <script type="text/javascript">
 
 var m = [20, 120, 20, 120],
     w = 1280 - m[1] - m[3],
-    h = 800 - m[0] - m[2],
+    h = 400 - m[0] - m[2],
     i = 0,
     root;
 
@@ -58,21 +58,7 @@ d3.json("flare.json", function(json) {
   root = json;
   root.x0 = h / 2;
   root.y0 = 0;
-
-  function toggleAll(d) {
-    if (d.children) {
-      d.children.forEach(toggleAll);
-      toggle(d);
-    }
-  }
-
-  // Initialize the display to show a few nodes.
-  root.children.forEach(toggleAll);
-  toggle(root.children[1]);
-  toggle(root.children[1].children[2]);
-  toggle(root.children[9]);
-  toggle(root.children[9].children[0]);
-
+  
   update(root);
 });
 
@@ -83,7 +69,9 @@ function update(source) {
   var nodes = tree.nodes(root).reverse();
 
   // Normalize for fixed-depth.
-  nodes.forEach(function(d) { d.y = d.depth * 180; });
+  nodes.forEach(function(d) {
+    d.y = d.depth * 180;
+  });
 
   // Update the nodes…
   var node = vis.selectAll("g.node")
@@ -93,16 +81,19 @@ function update(source) {
   var nodeEnter = node.enter().append("svg:g")
       .attr("class", "node")
       .attr("transform", function(d) { return "translate(" + source.y0 + "," + source.x0 + ")"; })
-      .on("click", function(d) { toggle(d); update(d); });
+      .on("click", function(d) { click(d); });
 
-  nodeEnter.append("svg:circle")
-      .attr("r", 1e-6)
-      .style("fill", function(d) { return d._children ? "lightsteelblue" : "#fff"; });
+  nodeEnter.append("svg:rect")
+      .attr("y", -15)
+      .attr("width", 100)
+      .attr("height", 30)
+      .style("fill",   function(d) { return d.click ? "#ccc" : "#fff"; })
+      .style("stroke", function(d) { return d.click ? "#ccc" : "steelblue" });
 
   nodeEnter.append("svg:text")
-      .attr("x", function(d) { return d.children || d._children ? -10 : 10; })
+      .attr("x", function(d) { return 12; })
       .attr("dy", ".35em")
-      .attr("text-anchor", function(d) { return d.children || d._children ? "end" : "start"; })
+      .attr("text-anchor", function(d) { return "start"; })
       .text(function(d) { return d.name; })
       .style("fill-opacity", 1e-6);
 
@@ -111,9 +102,8 @@ function update(source) {
       .duration(duration)
       .attr("transform", function(d) { return "translate(" + d.y + "," + d.x + ")"; });
 
-  nodeUpdate.select("circle")
-      .attr("r", 4.5)
-      .style("fill", function(d) { return d._children ? "lightsteelblue" : "#fff"; });
+  nodeUpdate.select("rect")
+      .style("fill", function(d) { return d.click ? "#eee" : "#fff"; });
 
   nodeUpdate.select("text")
       .style("fill-opacity", 1);
@@ -124,7 +114,7 @@ function update(source) {
       .attr("transform", function(d) { return "translate(" + source.y + "," + source.x + ")"; })
       .remove();
 
-  nodeExit.select("circle")
+  nodeExit.select("rect")
       .attr("r", 1e-6);
 
   nodeExit.select("text")
@@ -166,17 +156,125 @@ function update(source) {
   });
 }
 
-// Toggle children.
-function toggle(d) {
-  if (d.children) {
-    d._children = d.children;
-    d.children = null;
+function add_node() {
+  root.children.push({"name" : "test"}); 
+  update(root);
+}
+
+function click(d) {
+  if(d.click != undefined) {
+    d.click(d);
   } else {
-    d.children = d._children;
-    d._children = null;
+    show_menu(d);
   }
 }
 
+function remove_element(l, e) {
+  while(1) {
+    var i = l.indexOf(e);
+    if(i == -1) {
+      break;
+    } else {
+      l.splice(l, i);
+    }
+  }
+}
+
+function remove(l, f) {
+  var new_l = [];
+  for(var i in l) {
+    var e = l[i];
+    if(!f(e)) {
+      new_l.push(e);
+    }
+  }
+  return new_l;
+}
+
+function hide_menu(d) {
+  d.children = remove(d.children, function (e) {
+    return (e.name == 'add child') || (e.name == 'remove')
+  });
+  update(d);
+  last_d = undefined;
+}
+
+var unused_nodes = [
+  {"name" : "3"},
+  {"name" : "3 A"},
+  {"name" : "3 B"},
+  {"name" : "3 C"}
+];
+
+var last_d;
+function show_menu(d) {
+  if(last_d != undefined) {
+    if(last_d == d) {
+      hide_menu(last_d);
+      return;
+    } else {
+      hide_menu(last_d);
+    }
+  }
+  
+  if(d.children == undefined) {
+    d.children = [];
+  }
+  d.children.push({"name" : "add child", "click" : function (e) {
+    new_node = function (n) {
+      unused_nodes = remove(unused_nodes, function (e) {
+        return e.name == n.name;
+      });
+      
+      d.children.push({"name" : n.name});
+      
+      hide_menu(d);
+      update(d);
+    }
+    cancel = function () {
+      hide_menu(d);
+      update(d);
+    };
+    
+    if(e.children == undefined) {
+      e.children = [];
+    }
+    
+    if(unused_nodes.length > 0) {
+      // show available (unused) nodes
+      for(var i in unused_nodes) {
+        e.children.push(
+          {"name" : unused_nodes[i].name, "click" : new_node}
+        );
+      }
+      
+      // add cancel menu option
+      e.children.push(
+        {"name" : "cancel", "click" : cancel}
+      );
+    } else {
+      e.children.push(
+        {"name" : "no unused nodes", "click" : cancel}
+      );
+    }
+    
+    
+    update(e);
+  }});
+  d.children.push({"name" : "remove", "click" : function () {
+    var p = d.parent;
+    p.children = remove(p.children, function (e) {
+      return e == d;
+    });
+    update(p);
+    update(d);
+    
+    unused_nodes.push(d);
+  }});
+  update(d);
+  
+  last_d = d;
+}
     </script>
   </body>
 </html>
