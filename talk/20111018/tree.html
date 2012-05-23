@@ -5,6 +5,7 @@
     <link type="text/css" rel="stylesheet" href="style.css"/>
     <script type="text/javascript" src="d3/d3.js"></script>
     <script type="text/javascript" src="d3/d3.layout.js"></script>
+    <script type="text/javascript" src="shortcut.js"></script>
     <style type="text/css">
 
 
@@ -42,6 +43,8 @@ var m = [20, 120, 20, 120],
     i = 0,
     root;
 
+var selected;
+
 var tree = d3.layout.tree()
     .size([h, w]);
 
@@ -59,11 +62,13 @@ d3.json("flare.json", function(json) {
   root.x0 = h / 2;
   root.y0 = 0;
   
+  selected = root;
+  
   update(root);
 });
 
 function update(source) {
-  var duration = d3.event && d3.event.altKey ? 5000 : 500;
+  var duration = d3.event && d3.event.altKey ? 500 : 500;
 
   // Compute the new tree layout.
   var nodes = tree.nodes(root).reverse();
@@ -88,7 +93,13 @@ function update(source) {
       .attr("width", 100)
       .attr("height", 30)
       .style("fill",   function(d) { return d.click ? "#ccc" : "#fff"; })
-      .style("stroke", function(d) { return d.click ? "#ccc" : "steelblue" });
+      .style("stroke", function(d) {
+        if(selected == d) {
+          return '#76AB3B';
+        } else {
+          return d.click ? "#ccc" : "steelblue" 
+        }
+      });
 
   nodeEnter.append("svg:text")
       .attr("x", function(d) { return 12; })
@@ -103,7 +114,14 @@ function update(source) {
       .attr("transform", function(d) { return "translate(" + d.y + "," + d.x + ")"; });
 
   nodeUpdate.select("rect")
-      .style("fill", function(d) { return d.click ? "#eee" : "#fff"; });
+      .style("fill", function(d) { return d.click ? "#eee" : "#fff"; })
+      .style("stroke", function(d) {
+        if(selected == d) {
+          return '#76AB3B';
+        } else {
+          return d.click ? "#ccc" : "steelblue" 
+        }
+      });
 
   nodeUpdate.select("text")
       .style("fill-opacity", 1);
@@ -220,7 +238,7 @@ function show_menu(d) {
   if(d.children == undefined) {
     d.children = [];
   }
-  d.children.push({"name" : "add child", "click" : function (e) {
+  node = {"name" : "add child", "click" : function (e) {
     new_node = function (n) {
       unused_nodes = remove(unused_nodes, function (e) {
         return e.name == n.name;
@@ -230,10 +248,13 @@ function show_menu(d) {
       
       hide_menu(d);
       update(d);
+      
+      selected = d;
     }
     cancel = function () {
       hide_menu(d);
       update(d);
+      selected = d;
     };
     
     if(e.children == undefined) {
@@ -257,10 +278,13 @@ function show_menu(d) {
         {"name" : "no unused nodes", "click" : cancel}
       );
     }
-    
+    selected = e.children[0];
     
     update(e);
-  }});
+  }}
+  d.children.push(node);
+  selected = node;
+  
   d.children.push({"name" : "remove", "click" : function () {
     var p = d.parent;
     p.children = remove(p.children, function (e) {
@@ -270,11 +294,77 @@ function show_menu(d) {
     update(d);
     
     unused_nodes.push(d);
+    if(d.children != undefined) {
+      for(var i in d.children) {
+        var e = d.children[i];
+        if(e.click == undefined) {
+          unused_nodes.push(e);
+        }
+      }
+    }
+    
+    selected = d.parent;
   }});
   update(d);
   
   last_d = d;
 }
+
+// keyboard shortcut stuff
+shortcut.add("right", function() {
+  if(selected.children.length > 0) {
+    selected = selected.children[0];
+    update(selected);
+    update(selected.parent);
+  }
+});
+shortcut.add("left", function () {
+  if(selected.parent != undefined) {
+    var old = selected;
+    selected = selected.parent;
+    update(selected);
+    update(old);
+  }
+});
+shortcut.add("up", function () {
+  var p = selected.parent;
+  if(p != undefined) {
+    var i = p.children.indexOf(selected) - 1;
+    if(i >= 0) {
+      var old = selected;
+      selected = p.children[i];
+      update(selected);
+      update(old);
+    }
+  }
+});
+shortcut.add("down", function () {
+  var p = selected.parent;
+  if(p != undefined) {
+    var i = p.children.indexOf(selected) + 1;
+    if(i < p.children.length) {
+      var old = selected;
+      selected = p.children[i];
+      update(selected);
+      update(old);
+    }
+  }
+});
+shortcut.add("enter", function () {
+  click(selected);
+});
+shortcut.add("escape", function () {
+  hide_menu(selected);
+  if(selected.parent != undefined) {
+    hide_menu(selected.parent);
+    selected = selected.parent;
+  }
+  if(selected.parent != undefined) {
+    hide_menu(selected.parent);
+    selected = selected.parent;
+  }
+});
+
     </script>
   </body>
 </html>
