@@ -1,4 +1,4 @@
-allow new computed meter
+allow new computed meters
 enforce rules:
   computed meters must be computable
     what is computable?
