@@ -39,7 +39,7 @@ path.link {
 
 var m = [20, 120, 20, 120],
     w = 1280 - m[1] - m[3],
-    h = 400 - m[0] - m[2],
+    h = 600 - m[0] - m[2],
     i = 0,
     root;
 
@@ -285,26 +285,28 @@ function show_menu(d) {
   d.children.push(node);
   selected = node;
   
-  d.children.push({"name" : "remove", "click" : function () {
-    var p = d.parent;
-    p.children = remove(p.children, function (e) {
-      return e == d;
-    });
-    update(p);
-    update(d);
-    
-    unused_nodes.push(d);
-    if(d.children != undefined) {
-      for(var i in d.children) {
-        var e = d.children[i];
-        if(e.click == undefined) {
-          unused_nodes.push(e);
+  if(d.parent != undefined) {
+    d.children.push({"name" : "remove", "click" : function () {
+      var p = d.parent;
+      p.children = remove(p.children, function (e) {
+        return e == d;
+      });
+      update(p);
+      update(d);
+      
+      unused_nodes.push(d);
+      if(d.children != undefined) {
+        for(var i in d.children) {
+          var e = d.children[i];
+          if(e.click == undefined) {
+            unused_nodes.push(e);
+          }
         }
       }
-    }
-    
-    selected = d.parent;
-  }});
+      
+      selected = d.parent;
+    }});
+  }
   update(d);
   
   last_d = d;

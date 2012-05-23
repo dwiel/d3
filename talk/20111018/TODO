@@ -1,8 +1,9 @@
-keyboard shortcuts
+allow new computed meter
 enforce rules:
-  virtual meters must be computable
+  computed meters must be computable
     what is computable?
 allow multiplier
+help bar on right hand side
 
 intigration with plotwatt
   style
