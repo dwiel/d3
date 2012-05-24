@@ -1,5 +1,3 @@
-down arrow should travel to cousins when out of siblings
-type, autocomplete add node
 enforce rules:
   computed meters must be computable
     what is computable?
@@ -9,3 +7,6 @@ intigration with plotwatt
   save
   load
   allow switching between readings and disag topo
+
+down arrow should travel to cousins when out of siblings
+autocomplete on add node
