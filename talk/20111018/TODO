@@ -1,8 +1,9 @@
+down arrow should travel to cousins when out of siblings
+type, autocomplete add node
 allow new computed meters
 enforce rules:
   computed meters must be computable
     what is computable?
-allow multiplier
 
 intigration with plotwatt
   style
