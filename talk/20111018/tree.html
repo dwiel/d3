@@ -43,6 +43,7 @@ path.link {
                 Enter            : select
                 Escape           : quit menu
                 ↑/↓/←/→ (arrows) : navigate tree
+                Delete           : remove node
 
 
             Mouse :
@@ -56,7 +57,7 @@ path.link {
 
 var m = [20, 120, 20, 120],
     w = 1280 - m[1] - m[3],
-    h = 600 - m[0] - m[2],
+    h = 800 - m[0] - m[2],
     i = 0,
     root;
 
@@ -92,11 +93,13 @@ function update(source) {
 
   // Normalize for fixed-depth.
   nodes.forEach(function(d) {
-    if(d.click == undefined) {
-      d.y = d.depth * 180;
-    } else {
-      d.y = (d.depth-1) * 180;
-    }
+    d.y = d.depth * 180;
+    /*if(d.click != undefined) {
+      d.y -= 170;
+      if(d.parent != undefined && d.parent.click != undefined) {
+        d.y -= 170;
+      }
+    }*/
   });
 
   // Update the nodes…
@@ -126,7 +129,13 @@ function update(source) {
       .attr("x", function(d) { return 12; })
       .attr("dy", ".35em")
       .attr("text-anchor", function(d) { return "start"; })
-      .text(function(d) { return d.name; })
+      .text(function(d) {
+        if(d.multiplier) {
+          return d.name + " * " + d.multiplier;
+        } else {
+          return d.name;
+        }
+      })
       .style("fill-opacity", 1e-6);
 
   // Transition nodes to their new position.
@@ -147,7 +156,14 @@ function update(source) {
       });
 
   nodeUpdate.select("text")
-      .style("fill-opacity", 1);
+      .style("fill-opacity", 1)
+      .text(function(d) {
+        if(d.multiplier) {
+          return d.name + " * " + d.multiplier;
+        } else {
+          return d.name;
+        }
+      });
 
   // Transition exiting nodes to the parent's new position.
   var nodeExit = node.exit().transition()
@@ -156,7 +172,6 @@ function update(source) {
       .remove();
 
   nodeExit.select("rect")
-      .attr("r", 1e-6);
 
   nodeExit.select("text")
       .style("fill-opacity", 1e-6);
@@ -197,11 +212,6 @@ function update(source) {
   });
 }
 
-function add_node() {
-  root.children.push({"name" : "test"}); 
-  update(root);
-}
-
 function click(d) {
   if(d.click != undefined) {
     d.click(d);
@@ -234,10 +244,10 @@ function remove(l, f) {
 
 function hide_menu(d) {
   d.children = remove(d.children, function (e) {
-    return (e.name == 'add child') || (e.name == 'remove')
+    return e.click != undefined;
   });
   update(d);
-  last_d = undefined;
+  menu_node = undefined;
 }
 
 var unused_nodes = [
@@ -247,14 +257,35 @@ var unused_nodes = [
   {"name" : "3 C"}
 ];
 
-var last_d;
+function remove_node(d) {
+  var p = d.parent;
+  p.children = remove(p.children, function (e) {
+    return e == d;
+  });
+  update(p);
+  update(d);
+  
+  unused_nodes.push(d);
+  if(d.children != undefined) {
+    for(var i in d.children) {
+      var e = d.children[i];
+      if(e.click == undefined) {
+        unused_nodes.push(e);
+      }
+    }
+  }
+  
+  selected = d.parent;
+}
+
+var menu_node;
 function show_menu(d) {
-  if(last_d != undefined) {
-    if(last_d == d) {
-      hide_menu(last_d);
+  if(menu_node != undefined) {
+    if(menu_node == d) {
+      hide_menu(menu_node);
       return;
     } else {
-      hide_menu(last_d);
+      hide_menu(menu_node);
     }
   }
   
@@ -262,12 +293,21 @@ function show_menu(d) {
     d.children = [];
   }
   node = {"name" : "add child", "click" : function (e) {
+    // if we've already expanded the add child menu, don't expand it again
+    if(e.children != undefined) {
+      return
+    }
+    
     new_node = function (n) {
       unused_nodes = remove(unused_nodes, function (e) {
         return e.name == n.name;
       });
       
       d.children.push({"name" : n.name});
+      // keep children in order
+      d.children.sort(function (a, b) {
+        return a.name > b.name;
+      });
       
       hide_menu(d);
       update(d);
@@ -280,10 +320,9 @@ function show_menu(d) {
       selected = d;
     };
     
-    if(e.children == undefined) {
-      e.children = [];
-    }
+    e.children = [];
     
+    // if there are unused nodes, list them
     if(unused_nodes.length > 0) {
       // show available (unused) nodes
       for(var i in unused_nodes) {
@@ -297,6 +336,7 @@ function show_menu(d) {
         {"name" : "cancel", "click" : cancel}
       );
     } else {
+      // there are no unused nodes
       e.children.push(
         {"name" : "no unused nodes", "click" : cancel}
       );
@@ -306,33 +346,32 @@ function show_menu(d) {
     update(e);
   }}
   d.children.push(node);
+  // add child node is selected by default in the menu
   selected = node;
   
+  // can't remove the root node
   if(d.parent != undefined) {
     d.children.push({"name" : "remove", "click" : function () {
-      var p = d.parent;
-      p.children = remove(p.children, function (e) {
-        return e == d;
-      });
-      update(p);
-      update(d);
-      
-      unused_nodes.push(d);
-      if(d.children != undefined) {
-        for(var i in d.children) {
-          var e = d.children[i];
-          if(e.click == undefined) {
-            unused_nodes.push(e);
-          }
-        }
-      }
-      
-      selected = d.parent;
+      remove_node(d);
     }});
   }
+  
+  // allow changing the multiplier
+  d.children.push({"name" : "change mult", "click" : function (m) {
+    var d = m.parent;
+    var multiplier = d.multiplier;
+    if(multiplier == undefined) {
+      multiplier = 1;
+    }
+    d.multiplier = prompt("new multiplier", multiplier);
+    hide_menu(d);
+    selected = d;
+    update(d);
+  }});
   update(d);
   
-  last_d = d;
+  // keep track of the node menu that is open
+  menu_node = d;
 }
 
 // keyboard shortcut stuff
@@ -388,6 +427,12 @@ shortcut.add("escape", function () {
     hide_menu(selected.parent);
     selected = selected.parent;
   }
+});
+shortcut.add("delete", function () {
+  var p = selected.parent;
+  remove_node(selected);
+  update(selected);
+  update(p);
 });
 
     </script>
