@@ -164,7 +164,7 @@ function update(source) {
     if(n.length > 19 && d != selected) {
       n = n.substr(0, 16) + '...';
     }
-    if(d.multiplier) {
+    if(d.multiplier && d.multiplier != 1) {
       return n + " * " + d.multiplier;
     } else {
       return n;
@@ -313,6 +313,17 @@ function remove_node(d) {
   selected = d.parent;
 }
 
+function change_multiplier(d) {
+  var multiplier = d.multiplier;
+  if(multiplier == undefined) {
+    multiplier = 1;
+  }
+  d.multiplier = prompt("new multiplier", multiplier);
+  hide_menu(d);
+  selected = d;
+  update(d);
+}
+
 var menu_node;
 function show_menu(d) {
   if(menu_node != undefined) {
@@ -397,16 +408,8 @@ function show_menu(d) {
   }
   
   // allow changing the multiplier
-  d.children.push({"name" : "change mult", "click" : function (m) {
-    var d = m.parent;
-    var multiplier = d.multiplier;
-    if(multiplier == undefined) {
-      multiplier = 1;
-    }
-    d.multiplier = prompt("new multiplier", multiplier);
-    hide_menu(d);
-    selected = d;
-    update(d);
+  d.children.push({"name" : "change mult", "click" : function () {
+    change_multiplier(d);
   }});
   update(d);
   
@@ -466,6 +469,17 @@ function down() {
 shortcut.add("down", down);
 shortcut.add("j", down);
 
+shortcut.add("pagedown", function () {
+  if(selected.parent == undefined) return;
+  selected = selected.parent.children.slice(-1)[0];
+  update(selected);
+});
+shortcut.add("pageup", function () {
+  if(selected.parent == undefined) return;
+  selected = selected.parent.children[0];
+  update(selected);
+});
+
 shortcut.add("enter", function () {
   click(selected);
 });
@@ -479,20 +493,15 @@ shortcut.add("escape", function () {
   }
   hide_menu(menu_node);
 });
+
 shortcut.add("delete", function () {
   var p = selected.parent;
   remove_node(selected);
   update(selected);
   update(p);
 });
-shortcut.add("pagedown", function () {
-  if(selected.parent == undefined) return;
-  selected = selected.parent.children.slice(-1)[0];
-  update(selected);
-});
-shortcut.add("pageup", function () {
-  if(selected.parent == undefined) return;
-  selected = selected.parent.children[0];
+shortcut.add("m", function () {
+  change_multiplier(selected);
   update(selected);
 });
 
