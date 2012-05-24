@@ -281,6 +281,14 @@ function hide_menu(d) {
   d.children = remove(d.children, function (e) {
     return e.click != undefined;
   });
+  
+  // if the selected node is a child of the menu we are hiding, make the 
+  // menu_node the new selected node
+  if(selected.parent == d || (
+     selected.parent != undefined && selected.parent.parent == d)) {
+    selected = d;
+  }
+  
   update(d);
   menu_node = undefined;
 }
@@ -320,8 +328,6 @@ function change_multiplier(d) {
   }
   d.multiplier = prompt("new multiplier", multiplier);
   hide_menu(d);
-  selected = d;
-  update(d);
 }
 
 var menu_node;
@@ -352,14 +358,9 @@ function show_menu(d) {
       d.children.push({"name" : n.name});
       
       hide_menu(d);
-      update(d);
-      
-      selected = d;
     }
     cancel = function () {
       hide_menu(d);
-      update(d);
-      selected = d;
     };
     
     e.children = [];
@@ -378,8 +379,6 @@ function show_menu(d) {
         var new_name = prompt("new computed meter name", "");
         d.children.push({"name" : new_name, "computed" : true})
         hide_menu(d);
-        update(d);
-        selected = d;
       }})
 
       // add cancel menu option
@@ -485,12 +484,6 @@ shortcut.add("enter", function () {
 });
 shortcut.add("escape", function () {
   // hide the current menu_node
-  // if the selected node is a child of the menu we are hiding, make the 
-  // menu_node the new selected node
-  if(selected.parent == menu_node || (
-     selected.parent != undefined && selected.parent.parent == menu_node)) {
-    selected = menu_node;
-  }
   hide_menu(menu_node);
 });
 
