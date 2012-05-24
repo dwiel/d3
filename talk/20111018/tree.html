@@ -80,27 +80,34 @@ var m = [20, 120, 20, 120],
     i = 0,
     root;
 
+// this holds the currently selected meter/node
 var selected;
 
 var tree = d3.layout.tree()
     .sort(function (a, b) {
+      // if a and b are meters (no click action) then sort by name
       if(a.click == undefined && b.click == undefined) { 
         return a.name > b.name;
+      // if a or b are not meters, keep the order that they were added in
       } else {
+        // they are equal
         return 0;
       }
     })
     .size([h, w]);
 
+// the projection makes the edges go left-right rather than up-down
 var diagonal = d3.svg.diagonal()
     .projection(function(d) { return [d.y, d.x]; });
 
+// set position of the visualization
 var vis = d3.select("#body").append("svg:svg")
     .attr("width", w + m[1] + m[3])
     .attr("height", h + m[0] + m[2])
   .append("svg:g")
     .attr("transform", "translate(" + m[3] + "," + m[0] + ")");
 
+// load initial data
 d3.json("flare.json", function(json) {
   root = json;
   root.x0 = h / 2;
@@ -112,6 +119,9 @@ d3.json("flare.json", function(json) {
 });
 
 function update(source) {
+  // this function gets called any time a node changes
+  
+  // standard animation speed
   var duration = d3.event && d3.event.altKey ? 500 : 500;
 
   // Compute the new tree layout.
@@ -154,9 +164,9 @@ function update(source) {
   }
   nodeEnter.append("svg:rect")
       .attr("y", -12)
-      .attr("width", rect_width)
       .attr("height", 25)
       .style("fill",   function(d) { return d.click ? "#ccc" : "#fff"; })
+      .attr("width", rect_width)
       .style("stroke", rect_stroke);
 
   text_text = function(d) {
@@ -247,6 +257,7 @@ function update(source) {
   });
 }
 
+// gets called on every node selection (mouse:click or keyboard:enter)
 function click(d) {
   if(d.click != undefined) {
     d.click(d);
@@ -255,17 +266,7 @@ function click(d) {
   }
 }
 
-function remove_element(l, e) {
-  while(1) {
-    var i = l.indexOf(e);
-    if(i == -1) {
-      break;
-    } else {
-      l.splice(l, i);
-    }
-  }
-}
-
+// remove all elements from l for which f(e) is true
 function remove(l, f) {
   var new_l = [];
   for(var i in l) {
@@ -277,19 +278,22 @@ function remove(l, f) {
   return new_l;
 }
 
-function hide_menu(d) {
-  d.children = remove(d.children, function (e) {
+// hide any menu located at node d
+function hide_menu() {
+  menu_node.children = remove(menu_node.children, function (e) {
     return e.click != undefined;
   });
   
   // if the selected node is a child of the menu we are hiding, make the 
   // menu_node the new selected node
-  if(selected.parent == d || (
-     selected.parent != undefined && selected.parent.parent == d)) {
-    selected = d;
+  if(selected.parent == menu_node || (
+     selected.parent != undefined && selected.parent.parent == menu_node)) {
+    selected = menu_node;
   }
   
-  update(d);
+  update(menu_node);
+  
+  // there is no longer any menu
   menu_node = undefined;
 }
 
@@ -327,17 +331,16 @@ function change_multiplier(d) {
     multiplier = 1;
   }
   d.multiplier = prompt("new multiplier", multiplier);
-  hide_menu(d);
 }
 
 var menu_node;
 function show_menu(d) {
   if(menu_node != undefined) {
     if(menu_node == d) {
-      hide_menu(menu_node);
+      hide_menu();
       return;
     } else {
-      hide_menu(menu_node);
+      hide_menu();
     }
   }
   
@@ -357,10 +360,10 @@ function show_menu(d) {
       
       d.children.push({"name" : n.name});
       
-      hide_menu(d);
+      hide_menu();
     }
     cancel = function () {
-      hide_menu(d);
+      hide_menu();
     };
     
     e.children = [];
@@ -378,7 +381,7 @@ function show_menu(d) {
       e.children.push({"name" : "new computed meter", "click" : function () {
         var new_name = prompt("new computed meter name", "");
         d.children.push({"name" : new_name, "computed" : true})
-        hide_menu(d);
+        hide_menu();
       }})
 
       // add cancel menu option
@@ -409,6 +412,7 @@ function show_menu(d) {
   // allow changing the multiplier
   d.children.push({"name" : "change mult", "click" : function () {
     change_multiplier(d);
+    hide_menu();
   }});
   update(d);
   
@@ -484,7 +488,7 @@ shortcut.add("enter", function () {
 });
 shortcut.add("escape", function () {
   // hide the current menu_node
-  hide_menu(menu_node);
+  hide_menu();
 });
 
 shortcut.add("delete", function () {
