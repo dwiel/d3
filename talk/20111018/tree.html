@@ -136,6 +136,8 @@ function update(source) {
 
   nodeUpdate.select("rect")
       .style("fill", function(d) { return d.click ? "#eee" : "#fff"; })
+      // switch colors immediately, no waiting necessary
+      .duration(0)
       .style("stroke", function(d) {
         if(selected == d) {
           return '#76AB3B';
