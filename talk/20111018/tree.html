@@ -195,7 +195,82 @@ function update(source) {
       .attr("height", 25)
       .style("fill",   function(d) { return d.click ? "#ccc" : "#fff"; })
       .attr("width", rect_width)
-      .style("stroke", rect_stroke);
+      .style("stroke", rect_stroke)
+      .call(d3.behavior.drag()
+        .on("dragstart", function(d) {
+          d.xp = 0;
+          d.yp = 0;
+          update(d);
+        })
+        .on("drag", function(d) {
+          if(d == root) return;
+            
+          d.xp += d3.event.dx;
+          d.yp += d3.event.dy;
+          update(d);
+            
+          if(d.xp < 20 && d.xp > -20 && d.yp < 20 && d.yp > -20) {
+            selected = d;
+            return;
+          }
+          
+          var best_dist = 1000000;
+          var best_node;
+          for(var i in nodes) {
+            var n = nodes[i];
+            if(n == d) continue;
+            
+            var dist = Math.pow((d.x + d.yp) - n.x, 2) +
+                       Math.pow((d.y + d.xp) - n.y, 2);
+            
+            if(dist < best_dist) {
+              best_dist = dist;
+              best_node = n;
+            }
+          }
+          
+          // look to see if this is an illegal move
+          if(!is_child(d, best_node)) {
+            selected = best_node;
+          } else {
+            selected = d;
+          }
+          update(selected);
+        })
+        .on("dragend", function(d) {
+          if(d.xp < 20 && d.xp > -20 && d.yp < 20 && d.yp > -20) {
+            // not a valid move, return to where we started
+            d.xp = 0;
+            d.yp = 0;
+            update(d);
+            return;
+          }
+          
+          // reset to wherever the tree says to go
+          d.xp = 0;
+          d.yp = 0;
+          
+          // if this is an illegal drop, redraw d and be done
+          if(d.parent == selected || d == selected) {
+            update(d);
+            return;
+          }
+          
+          // remove this node from its parent
+          var p = d.parent;
+          p.children = remove(p.children, function (e) {
+            return d == e;
+          });
+          
+          // move this node to its new parent
+          if(selected.children === undefined) {
+            selected.children = [];
+          }
+          selected.children.push(d);
+          
+          // redraw this node
+          update(d);
+        }));
 
   text_text = function(d) {
     var n = d.name;
@@ -225,12 +300,19 @@ function update(source) {
       .attr("rx", function(d) { return d.computed ? 6 : 0; })
       .attr("width", rect_width)
       // switch colors immediately, no waiting necessary
-      .duration(0)
+      .duration(1)
+      .attr("x", function(d) { return d.xp ? d.xp : 0; })
+      .attr("y", function(d) { return d.yp ? d.yp -12 : -12; })
       .style("stroke", rect_stroke);
 
   nodeUpdate.select("text")
       .style("fill-opacity", 1)
       .text(text_text);
+
+  nodeUpdate.select("text")
+      .duration(1)
+      .attr("x", function(d) { return d.xp ? 7 + d.xp : 7; })
+      .attr("y", function(d) { return d.yp ? d.yp : 0; })
 
   // Transition exiting nodes to the parent's new position.
   var nodeExit = node.exit().transition()
@@ -262,7 +344,6 @@ function update(source) {
   link.transition()
       .duration(duration)
       .attr("d", function(pts) {
-        console.log(pts.source);
         return diagonal({
           "source" : {x: pts.source.x, y: pts.source.y + rect_width(pts.source)},
           "target" : {x: pts.target.x, y: pts.target.y + 0},
@@ -323,6 +404,16 @@ function hide_menu() {
   
   // there is no longer any menu
   menu_node = undefined;
+}
+
+function is_child(p, c) {
+  if(p.children == undefined) return false;
+  for(var i in p.children) {
+    var child = p.children[i];
+    if(child == c) return true;
+    if(is_child(child, c)) return true;
+  }
+  return false;
 }
 
 function remove_node(d) {
