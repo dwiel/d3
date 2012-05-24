@@ -68,7 +68,7 @@ var selected;
 
 var tree = d3.layout.tree()
     .sort(function (a, b) {
-      if(a.parent.click == undefined) { 
+      if(a.click == undefined && b.click == undefined) { 
         return a.name > b.name;
       } else {
         return 0;
