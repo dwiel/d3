@@ -73,15 +73,33 @@ path.link {
       </div>
     </div>
     <script type="text/javascript">
+/*
+ * NOTE:
+ * a node with a click attribute is a node that is part of a menu
+ *
+ * there are a few globals:
+ *   selected - the currently selected node (never undefined)
+ *   menu_node - the node which has a menu branching off of it, if
+ *               there is a menu node; undefined otherwise.
+ *   unused_nodes - a list of meters which are a part of this house, but have
+ *                  not yet been used.
+ */
+
+// globals
+var selected;
+var menu_node;
+var unused_nodes = [
+  {"name" : "3"},
+  {"name" : "3 A"},
+  {"name" : "3 B"},
+  {"name" : "3 C"}
+];
 
 var m = [20, 120, 20, 120],
     w = 1280 - m[1] - m[3],
     h = 800 - m[0] - m[2],
     i = 0,
     root;
-
-// this holds the currently selected meter/node
-var selected;
 
 var tree = d3.layout.tree()
     .sort(function (a, b) {
@@ -297,14 +315,9 @@ function hide_menu() {
   menu_node = undefined;
 }
 
-var unused_nodes = [
-  {"name" : "3"},
-  {"name" : "3 A"},
-  {"name" : "3 B"},
-  {"name" : "3 C"}
-];
-
 function remove_node(d) {
+  // remove node d from the tree and add to the unused_nodes list
+  
   var p = d.parent;
   p.children = remove(p.children, function (e) {
     return e == d;
@@ -326,6 +339,8 @@ function remove_node(d) {
 }
 
 function change_multiplier(d) {
+  // change the multiplier of node d
+  
   var multiplier = d.multiplier;
   if(multiplier == undefined) {
     multiplier = 1;
@@ -333,8 +348,11 @@ function change_multiplier(d) {
   d.multiplier = prompt("new multiplier", multiplier);
 }
 
-var menu_node;
 function show_menu(d) {
+  // show a menu branching of node d
+  
+  // hide other menu if there is another one open
+  // if there is already a menu open at this node, just close it
   if(menu_node != undefined) {
     if(menu_node == d) {
       hide_menu();
@@ -344,9 +362,11 @@ function show_menu(d) {
     }
   }
   
+  // initialize children attribute if it isn't already
   if(d.children == undefined) {
     d.children = [];
   }
+  
   node = {"name" : "add child", "click" : function (e) {
     // if we've already expanded the add child menu, don't expand it again
     if(e.children != undefined) {
@@ -420,7 +440,10 @@ function show_menu(d) {
   menu_node = d;
 }
 
+/////////
 // keyboard shortcut stuff
+
+// keyboard navigation
 function right() {
   if(selected.children.length > 0) {
     selected = selected.children[0];
@@ -483,6 +506,7 @@ shortcut.add("pageup", function () {
   update(selected);
 });
 
+// keyboard menus
 shortcut.add("enter", function () {
   click(selected);
 });
@@ -491,6 +515,7 @@ shortcut.add("escape", function () {
   hide_menu();
 });
 
+// keyboard actions
 shortcut.add("delete", function () {
   var p = selected.parent;
   remove_node(selected);
