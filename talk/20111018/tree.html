@@ -64,6 +64,9 @@ var m = [20, 120, 20, 120],
 var selected;
 
 var tree = d3.layout.tree()
+    .sort(function (a, b) {
+        return a.name > b.name;
+    })
     .size([h, w]);
 
 var diagonal = d3.svg.diagonal()
@@ -304,10 +307,6 @@ function show_menu(d) {
       });
       
       d.children.push({"name" : n.name});
-      // keep children in order
-      d.children.sort(function (a, b) {
-        return a.name > b.name;
-      });
       
       hide_menu(d);
       update(d);
