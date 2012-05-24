@@ -18,6 +18,7 @@
 
 .node text {
   font-size: 11px;
+  font-family: monospace;
 }
 
 path.link {
@@ -40,10 +41,12 @@ path.link {
             The currently selected meter has a
             green border
 
-                Enter      : open menu/select menu item
-                Escape     : quit menu
-                ↑ ↓ ← →    : navigate tree
-                Delete     : remove meter
+                Enter        : open menu/select menu item
+                Escape       : quit menu
+                ← ↓ ↑ →      : navigate tree
+                h j k l      : navigate tree
+                Page Up/Down : navigate to first/last sibling
+                Delete       : remove meter
 
 
             Mouse :
@@ -65,7 +68,11 @@ var selected;
 
 var tree = d3.layout.tree()
     .sort(function (a, b) {
+      if(a.parent.click == undefined) { 
         return a.name > b.name;
+      } else {
+        return 0;
+      }
     })
     .size([h, w]);
 
@@ -97,12 +104,6 @@ function update(source) {
   // Normalize for fixed-depth.
   nodes.forEach(function(d) {
     d.y = d.depth * 180;
-    /*if(d.click != undefined) {
-      d.y -= 170;
-      if(d.parent != undefined && d.parent.click != undefined) {
-        d.y -= 170;
-      }
-    }*/
   });
 
   // Update the nodes…
@@ -115,30 +116,49 @@ function update(source) {
       .attr("transform", function(d) { return "translate(" + source.y0 + "," + source.x0 + ")"; })
       .on("click", function(d) { click(d); });
 
+  rect_width = function(d) {
+    var add_chars = Math.max(d.name.length - 14, 0);
+    if(add_chars > 5 && d != selected) {
+      add_chars = 5;
+    }
+    return 110 + (add_chars * 7);
+  }
+  rect_stroke = function(d) {
+    if(selected == d) {
+      return '#76AB3B';
+    } else {
+      if(d.computed) {
+        return "#1e384d";
+      } else if(d.click) {
+        return "#ccc";
+      } else {
+        return "steelblue";
+      }
+    }
+  }
   nodeEnter.append("svg:rect")
-      .attr("y", -15)
-      .attr("width", 100)
-      .attr("height", 30)
+      .attr("y", -12)
+      .attr("width", rect_width)
+      .attr("height", 25)
       .style("fill",   function(d) { return d.click ? "#ccc" : "#fff"; })
-      .style("stroke", function(d) {
-        if(selected == d) {
-          return '#76AB3B';
-        } else {
-          return d.click ? "#ccc" : "steelblue" 
-        }
-      });
+      .style("stroke", rect_stroke);
 
+  text_text = function(d) {
+    var n = d.name;
+    if(n.length > 19 && d != selected) {
+      n = n.substr(0, 16) + '...';
+    }
+    if(d.multiplier) {
+      return n + " * " + d.multiplier;
+    } else {
+      return n;
+    }
+  }
   nodeEnter.append("svg:text")
-      .attr("x", function(d) { return 12; })
+      .attr("x", function(d) { return 7; })
       .attr("dy", ".35em")
       .attr("text-anchor", function(d) { return "start"; })
-      .text(function(d) {
-        if(d.multiplier) {
-          return d.name + " * " + d.multiplier;
-        } else {
-          return d.name;
-        }
-      })
+      .text(text_text)
       .style("fill-opacity", 1e-6);
 
   // Transition nodes to their new position.
@@ -148,25 +168,15 @@ function update(source) {
 
   nodeUpdate.select("rect")
       .style("fill", function(d) { return d.click ? "#eee" : "#fff"; })
+      .attr("rx", function(d) { return d.computed ? 6 : 0; })
+      .attr("width", rect_width)
       // switch colors immediately, no waiting necessary
       .duration(0)
-      .style("stroke", function(d) {
-        if(selected == d) {
-          return '#76AB3B';
-        } else {
-          return d.click ? "#ccc" : "steelblue" 
-        }
-      });
+      .style("stroke", rect_stroke);
 
   nodeUpdate.select("text")
       .style("fill-opacity", 1)
-      .text(function(d) {
-        if(d.multiplier) {
-          return d.name + " * " + d.multiplier;
-        } else {
-          return d.name;
-        }
-      });
+      .text(text_text);
 
   // Transition exiting nodes to the parent's new position.
   var nodeExit = node.exit().transition()
@@ -197,7 +207,13 @@ function update(source) {
   // Transition links to their new position.
   link.transition()
       .duration(duration)
-      .attr("d", diagonal);
+      .attr("d", function(pts) {
+        console.log(pts.source);
+        return diagonal({
+          "source" : {x: pts.source.x, y: pts.source.y + rect_width(pts.source)},
+          "target" : {x: pts.target.x, y: pts.target.y + 0},
+        });
+      });
 
   // Transition exiting nodes to the parent's new position.
   link.exit().transition()
@@ -330,6 +346,15 @@ function show_menu(d) {
         );
       }
       
+      // add computed meter menu option
+      e.children.push({"name" : "new computed meter", "click" : function () {
+        var new_name = prompt("new computed meter name", "");
+        d.children.push({"name" : new_name, "computed" : true})
+        hide_menu(d);
+        update(d);
+        selected = d;
+      }})
+
       // add cancel menu option
       e.children.push(
         {"name" : "cancel", "click" : cancel}
@@ -374,22 +399,28 @@ function show_menu(d) {
 }
 
 // keyboard shortcut stuff
-shortcut.add("right", function() {
+function right() {
   if(selected.children.length > 0) {
     selected = selected.children[0];
     update(selected);
     update(selected.parent);
   }
-});
-shortcut.add("left", function () {
+}
+shortcut.add("right", right);
+shortcut.add("l", right);
+
+function left() {
   if(selected.parent != undefined) {
     var old = selected;
     selected = selected.parent;
     update(selected);
     update(old);
   }
-});
-shortcut.add("up", function () {
+}
+shortcut.add("left", left);
+shortcut.add("h", left);
+
+function up() {
   var p = selected.parent;
   if(p != undefined) {
     var i = p.children.indexOf(selected) - 1;
@@ -400,8 +431,11 @@ shortcut.add("up", function () {
       update(old);
     }
   }
-});
-shortcut.add("down", function () {
+}
+shortcut.add("up", up);
+shortcut.add("k", up);
+
+function down() {
   var p = selected.parent;
   if(p != undefined) {
     var i = p.children.indexOf(selected) + 1;
@@ -412,26 +446,38 @@ shortcut.add("down", function () {
       update(old);
     }
   }
-});
+}
+shortcut.add("down", down);
+shortcut.add("j", down);
+
 shortcut.add("enter", function () {
   click(selected);
 });
 shortcut.add("escape", function () {
-  hide_menu(selected);
-  if(selected.parent != undefined && selected.click != undefined) {
-    hide_menu(selected.parent);
-    selected = selected.parent;
+  // hide the current menu_node
+  // if the selected node is a child of the menu we are hiding, make the 
+  // menu_node the new selected node
+  if(selected.parent == menu_node || (
+     selected.parent != undefined && selected.parent.parent == menu_node)) {
+    selected = menu_node;
   }
-  if(selected.parent != undefined && selected.click != undefined) {
-    hide_menu(selected.parent);
-    selected = selected.parent;
-  }
+  hide_menu(menu_node);
 });
 shortcut.add("delete", function () {
   var p = selected.parent;
   remove_node(selected);
   update(selected);
   update(p);
+});
+shortcut.add("pagedown", function () {
+  if(selected.parent == undefined) return;
+  selected = selected.parent.children.slice(-1)[0];
+  update(selected);
+});
+shortcut.add("pageup", function () {
+  if(selected.parent == undefined) return;
+  selected = selected.parent.children[0];
+  update(selected);
 });
 
     </script>
