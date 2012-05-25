@@ -118,14 +118,21 @@ var m = [20, 120, 20, 120],
 
 var tree = d3.layout.tree()
     .sort(function (a, b) {
-      // if a and b are meters (no click action) then sort by name
-      if(a.click == undefined && b.click == undefined) { 
-        return a.name > b.name;
       // if a or b are not meters, keep the order that they were added in
-      } else {
+      if(a.sort == false && b.sort == false) { 
         // they are equal
-        return 0;
+        ret = 0;
+      } else if (a.sort == false) {
+        ret = 1;
+      } else if (b.sort == false) {
+        ret = -1;
+      } else if (a.name == b.name) {
+        ret = 0;
+      } else {
+        ret = a.name > b.name ? 1 : -1;
       }
+      console.log(a.name + ' ' + b.name + ' ' + ret);
+      return ret;
     })
     .size([h, w]);
 
@@ -511,20 +518,24 @@ function show_menu(d) {
       }
       
       // add computed meter menu option
-      e.children.push({"name" : "new computed meter", "click" : function () {
-        var new_name = prompt("new computed meter name", "");
-        d.children.push({"name" : new_name, "computed" : true})
-        hide_menu();
-      }})
+      e.children.push({
+        "name" : "new computed meter",
+        "sort" : false,
+        "click" : function () {
+          var new_name = prompt("new computed meter name", "");
+         d.children.push({"name" : new_name, "computed" : true})
+          hide_menu();
+        }
+      })
 
       // add cancel menu option
       e.children.push(
-        {"name" : "cancel", "click" : cancel}
+        {"name" : "cancel", "sort" : false, "click" : cancel}
       );
     } else {
       // there are no unused nodes
       e.children.push(
-        {"name" : "no unused nodes", "click" : cancel}
+        {"name" : "no unused nodes", "sort" : false, "click" : cancel}
       );
     }
     selected = e.children[0];
@@ -536,23 +547,35 @@ function show_menu(d) {
   selected = node;
   
   // allow changing the multiplier
-  d.children.push({"name" : "change mult", "click" : function () {
-    change_multiplier(d);
-    hide_menu();
-  }});
+  d.children.push({
+    "name" : "change mult",
+    "sort" : false,
+    "click" : function () {
+      change_multiplier(d);
+      hide_menu();
+    }
+  });
   update(d);
   
   // allow changing the name
-  d.children.push({"name" : "change name", "click" : function () {
-    change_name(d);
-    hide_menu();
-  }});
+  d.children.push({
+    "name" : "change name",
+    "sort" : false,
+    "click" : function () {
+      change_name(d);
+      hide_menu();
+    }
+  });
   
   // can't remove the root node
   if(d.parent != undefined) {
-    d.children.push({"name" : "remove", "click" : function () {
-      remove_node(d);
-    }});
+    d.children.push({
+      "name" : "remove",
+    "sort" : false,
+      "click" : function () {
+        remove_node(d);
+      }
+    });
   }
   
   update(d);
