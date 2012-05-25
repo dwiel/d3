@@ -1,8 +1,10 @@
 {
  "name": "Root",
+ "computed": true,
  "children": [
   {
    "name": "1",
+   "computed": true,
    "children": [
     {"name": "1 A"},
     {"name": "1 B"},
@@ -11,6 +13,7 @@
   },
   {
    "name": "2",
+   "computed": true,
    "children": [
     {"name": "2 A"},
     {"name": "2 B"},

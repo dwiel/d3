@@ -547,7 +547,6 @@ function show_menu(d) {
     change_name(d);
     hide_menu();
   }});
-  update(d);
   
   // can't remove the root node
   if(d.parent != undefined) {
@@ -556,6 +555,8 @@ function show_menu(d) {
     }});
   }
   
+  update(d);
+
   // keep track of the node menu that is open
   menu_node = d;
 }
