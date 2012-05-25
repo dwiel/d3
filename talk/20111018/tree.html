@@ -76,8 +76,11 @@ path.link {
 
                         ~ actions ~
 
-                Delete       : remove meter
-                m            : change multiplier
+                Delete       : remove meter from the list
+                               * does not delete the meter
+                                 or its data
+                m            : change meter multiplier
+                n            : change meter name
 
 
           </xmp>
@@ -451,6 +454,13 @@ function change_multiplier(d) {
   d.multiplier = prompt("new multiplier", multiplier);
 }
 
+function change_name(d) {
+  // change the name of node d
+  
+  d.name = prompt("new name", d.name);
+  update(d);
+}
+
 function show_menu(d) {
   // show a menu branching of node d
   
@@ -525,19 +535,26 @@ function show_menu(d) {
   // add child node is selected by default in the menu
   selected = node;
   
-  // can't remove the root node
-  if(d.parent != undefined) {
-    d.children.push({"name" : "remove", "click" : function () {
-      remove_node(d);
-    }});
-  }
-  
   // allow changing the multiplier
   d.children.push({"name" : "change mult", "click" : function () {
     change_multiplier(d);
     hide_menu();
   }});
   update(d);
+  
+  // allow changing the name
+  d.children.push({"name" : "change name", "click" : function () {
+    change_name(d);
+    hide_menu();
+  }});
+  update(d);
+  
+  // can't remove the root node
+  if(d.parent != undefined) {
+    d.children.push({"name" : "remove", "click" : function () {
+      remove_node(d);
+    }});
+  }
   
   // keep track of the node menu that is open
   menu_node = d;
@@ -627,6 +644,10 @@ shortcut.add("delete", function () {
 });
 shortcut.add("m", function () {
   change_multiplier(selected);
+  update(selected);
+});
+shortcut.add("n", function () {
+  change_name(selected);
   update(selected);
 });
 
