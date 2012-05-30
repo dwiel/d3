@@ -164,14 +164,14 @@ d3.json("flare.json", function(json) {
 function update(source) {
   // this function gets called any time a node changes
   
-  computable_tree(root);
-    
   // standard animation speed
   var duration = d3.event && d3.event.altKey ? 500 : 500;
 
   // Compute the new tree layout.
   var nodes = tree.nodes(root).reverse();
 
+  computable_tree();
+    
   // Normalize for fixed-depth.
   nodes.forEach(function(d) {
     d.y = d.depth * 180;
@@ -198,12 +198,12 @@ function update(source) {
     if(selected == d) {
       return '#76AB3B';
     } else {
-      if(d.computable == false) {
+      if(d.click) {
+        return "#ccc";
+      } else if(d.computable == false) {
         return "#ff0000";
       } else if(d.computed) {
         return "#1e384d";
-      } else if(d.click) {
-        return "#ccc";
       } else {
         return "steelblue";
       }
@@ -700,125 +700,94 @@ shortcut.add("c", function () {
   update(root);
 });
 
-/* returns true if a tree is computable.
- * 
- * A tree is computable iff:
- *   all children are computable
- *    or
- *   all other siblings are computable and parent is not computed
- *    or
- *   no children and self is not computed
- * 
- * also sets each node's computable attribute.
+/* go through the tree and mark nodes as either computable or not.
+ * computable nodes will show up red and indicate an invalid configuration.
  *
- * note: a node can be marked as uncomputable if its children 
- * aren't all computable.
+ * design:
+ * at first it seemed easiest to have computable_tree use a recursive walk
+ * through the tree with some basic logic which could determine if each node
+ * was computable as it traversed the tree.  This however got too complicated
+ * because the logic to determine if a node is computable can require
+ * knowledge of the entire tree.  Managing this information and logic flow
+ * became complex and confusing, (though potentially optimially effiecient.)
+ * 
+ * Instead, the current design is used for its simplicity.  First each node
+ * is marked as not computable.  We then add facts to the system one at a 
+ * time, recursively propigating the implications of this knowledge at each
+ * step.
+ * 
+ * mark(d) is used to assert that a node is computable.
+ * the initially known information is that all nodes which are measured
+ * directly (not computed) are computable.  All other nodes which are
+ * computable are infered from these measured nodes.
+ * 
  */
-function computable_tree(d) {
-  d.computable = _computable_tree(d);
-  return d.computable;
-}
-function _computable_tree(d) {
-  return computable_from_siblings(d) || computable_from_children_or_self(d);
+function computable_tree() {
+  nodes = tree.nodes(root);
+  
+  // mark all nodes as not computable
+  nodes.forEach(function(d) {
+    d.computable = false;
+  });
+
+  // mark all nodes which are not computed and not part of a menu as
+  // computable
+  nodes.forEach(function(d) {
+    if(!d.computed && !d.click) {
+      mark(d);
+    }
+  });
 }
 
-/* helper for computable_tree: returns boolean : if no children or
- * not computed or computable 
+/* helper for mark;
+ * return a list of nodes in ds which are not currently known to be
+ * computable
  */
-function computable_from_children_or_self(d) {
-  // if no children and not computed
-  if(d.children == undefined || d.children.length == 0) {
-    return !d.computed;
-  }
-  
-  // if all children are computable then so is d
-  for(var i in d.children) {
-    if(!computable_tree(d.children[i])) {
-      return false;
+function uncomputable_nodes(ds) {
+  var ret = [];
+  for(var i in ds) {
+    var d = ds[i];
+    if(!d.computable) {
+      ret.push(d);
     }
   }
   
-  return true;
+  return ret;
 }
 
-/* helper for computable_tree: returns boolean : if parent and all sibilings  
- *   are computable
- */
-function computable_from_siblings(d) {
-  if(!d.parent) return false;
-  if(d.parent.computed) return false;
-
-  var sibs = d.parent.children;
-  for(var i in sibs) {
-    var sib = sibs[i];
-    if(sib.id == d.id) continue;
-    
-    if(!computable_from_children_or_self(sib)) {
-      return false;
-    }
-  }
+// mark a node as computable and recursively check to see if this new knowledge
+// means we should mark other nodes as computable
+function mark(d) {
+  d.computable = true;
   
-  // if it passed all those tests, it is computable from its siblings and
-  // parent
-  return true;
-}
-
-/*
-function _computable_tree(node) {
-  if(node.children == undefined) {
-    // node.computable will be set iff its been determined from its parent
-    // and siblings
-    return !node.computed || node.computable;
-  }
-  
-  var uncomputable_children = [];
-  for(var i in node.children) {
-    var child = node.children[i];
-    // make sure child is marked as not computable for now
-    child.computable = undefined;
-    if(!computable_tree(child)) {
-      uncomputable_children.push(child);
-    }
-  }
-  
-  if(uncomputable_children.length == 0) {
-    return true;
-  } else if(uncomputable_children.length == 1) {
-    // if one child is uncomputable, but this node is computable or 
-    // measured (not computed) then we can compute that one child
-    if(!node.computed || node.computable) {
-      var child = uncomputable_children[0];
-      // set the child as computable, and see if its children are 
-      // now all computable.
-      child.computable = true;
-      return computable_tree(child);
+  var p = d.parent;
+  if(p) {
+    // see if a sibling can be computed from its parent and siblings
+    if(p.computable) {
+      uncomputable_siblings = uncomputable_nodes(p.children);
+      if(uncomputable_siblings.length == 1) {
+        // this sibling's parent and all of its siblings are computable
+        // so it is computable too.
+        mark(uncomputable_siblings[0]);
+      }
+    // see if the parent can now be computed from its children
     } else {
-      return false;
+      if(uncomputable_nodes(p.children).length == 0) {
+        // the parent's children are all computable so it is too
+        mark(p);
+      }
     }
   } else {
-    // too many uncomputable children
-    return false;
-  }
-}
-*/
-
-/* remove computable attribute from all nodes in the tree. note that
- * this is different than the computed attribute
- */
-function clear_computable(node) {
-  // clear computable attribute
-  if(node.computable != undefined) {
-    node.computable = undefined;
-  }
-  
-  // recur on children
-  if(node.children != undefined) {
-    for(var i in node.children) {
-      clear_computable(node.children[i]);
+    // we are marking the root.  check to see if one of its children
+    // can now be computed
+    uncomputable_children = uncomputable_nodes(d.children);
+    if(uncomputable_children.length == 1) {
+      // this sibling's parent and all of its siblings are computable
+      // so it is computable too.
+      mark(uncomputable_children[0]);
     }
   }
 }
-
     </script>
   </body>
 </html>
