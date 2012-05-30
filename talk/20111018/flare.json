@@ -15,8 +15,8 @@
    "name": "2",
    "computed": true,
    "children": [
-    {"name": "2 A"},
-    {"name": "2 B"},
+    {"name": "2 A", "computed": true},
+    {"name": "2 B", "computed": true},
     {"name": "2 C"}
    ]
   }

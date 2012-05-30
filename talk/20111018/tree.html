@@ -155,6 +155,8 @@ d3.json("flare.json", function(json) {
   
   selected = root;
   
+  computable_tree(root);
+  
   update(root);
 });
 
@@ -193,7 +195,9 @@ function update(source) {
     if(selected == d) {
       return '#76AB3B';
     } else {
-      if(d.computed) {
+      if(d.computable == false) {
+        return "#ff0000";
+      } else if(d.computed) {
         return "#1e384d";
       } else if(d.click) {
         return "#ccc";
@@ -674,6 +678,77 @@ shortcut.add("n", function () {
   change_name(selected);
   update(selected);
 });
+shortcut.add("c", function () {
+  computable_tree(root);
+  update(root);
+});
+
+/* returns true if a tree is computable.
+ * 
+ * A tree is computable iff:
+ *   all children are computable
+ *    or
+ *   all other siblings are computable and parent is not computed
+ *    or
+ *   no children and self is not computed
+ * 
+ * also sets each node's computable attribute.
+ *
+ * note: a node can be marked as uncomputable if its children 
+ * aren't all computable.
+ */
+function computable_tree(node) {
+  node.computable = _computable_tree(node);
+  return node.computable;
+}
+function _computable_tree(node) {
+  if(node.children == undefined) {
+    return !node.computed;
+  }
+  
+  var uncomputable_children = [];
+  for(var i in node.children) {
+    if(!computable_tree(node.children[i])) {
+      uncomputable_children.push(node.children[i]);
+    }
+  }
+  
+  if(uncomputable_children.length == 0) {
+    return true;
+  } else if(uncomputable_children.length == 1) {
+    // if one child is uncomputable, but this node is computable or 
+    // measured (not computed) then we can compute that one child
+    if(!node.computed || node.computable) {
+      var child = uncomputable_children[0];
+      // set the child as computable, and see if its children are 
+      // now all computable.
+      child.computable = true;
+      return computable_tree(child);
+    } else {
+      return false;
+    }
+  } else {
+    // too many uncomputable children
+    return false;
+  }
+}
+
+/* remove computable attribute from all nodes in the tree. note that
+ * this is different than the computed attribute
+ */
+function clear_computable(node) {
+  // clear computable attribute
+  if(node.computable != undefined) {
+    node.computable = undefined;
+  }
+  
+  // recur on children
+  if(node.children != undefined) {
+    for(var i in node.children) {
+      clear_computable(node.children[i]);
+    }
+  }
+}
 
     </script>
   </body>
