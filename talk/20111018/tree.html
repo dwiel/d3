@@ -44,6 +44,9 @@ path.link {
             - Circuit meters have sharp corners and a 
               lighter border
             
+            - Meters which are not computable have a red
+              border
+            
             ---------------------------------------------
             
             Mouse :
@@ -155,14 +158,14 @@ d3.json("flare.json", function(json) {
   
   selected = root;
   
-  computable_tree(root);
-  
   update(root);
 });
 
 function update(source) {
   // this function gets called any time a node changes
   
+  computable_tree(root);
+    
   // standard animation speed
   var duration = d3.event && d3.event.altKey ? 500 : 500;
 
