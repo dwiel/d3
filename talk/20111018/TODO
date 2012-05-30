@@ -1,7 +1,3 @@
-enforce rules:
-  computed meters must be computable
-    what is computable?
-
 intigration with plotwatt
   style
   save

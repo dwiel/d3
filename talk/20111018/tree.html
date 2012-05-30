@@ -41,7 +41,7 @@ path.link {
             - Computed meters have rounded corners and 
               a darker border
 
-            - Circuit meters have sharp corners and a 
+            - Measured meters have sharp corners and a 
               lighter border
             
             - Meters which are not computable have a red
@@ -84,6 +84,8 @@ path.link {
                                  or its data
                 m            : change meter multiplier
                 n            : change meter name
+                c            : switch meter between measured 
+                               and computed
 
 
           </xmp>
@@ -696,8 +698,8 @@ shortcut.add("n", function () {
   update(selected);
 });
 shortcut.add("c", function () {
-  computable_tree(root);
-  update(root);
+  toggle_computed(selected);
+  update(selected);
 });
 
 /* go through the tree and mark nodes as either computable or not.
