@@ -435,6 +435,10 @@ function is_child(p, c) {
   return false;
 }
 
+function toggle_computed(d) {
+  d.computed = !d.computed;
+}
+
 function remove_node(d) {
   // remove node d from the tree and add to the unused_nodes list
   
@@ -574,6 +578,16 @@ function show_menu(d) {
     }
   });
   
+  // toggle computed
+  d.children.push({
+    "name" : "toggle computed",
+    "sort" : false,
+    "click" : function () {
+      toggle_computed(d);
+      hide_menu();
+    }
+  });
+  
   // can't remove the root node
   if(d.parent != undefined) {
     d.children.push({
@@ -681,6 +695,10 @@ shortcut.add("n", function () {
   change_name(selected);
   update(selected);
 });
+shortcut.add("c", function () {
+  computable_tree(root);
+  update(root);
+});
 
 /* returns true if a tree is computable.
  * 
@@ -696,19 +714,70 @@ shortcut.add("n", function () {
  * note: a node can be marked as uncomputable if its children 
  * aren't all computable.
  */
-function computable_tree(node) {
-  node.computable = _computable_tree(node);
-  return node.computable;
+function computable_tree(d) {
+  d.computable = _computable_tree(d);
+  return d.computable;
 }
+function _computable_tree(d) {
+  return computable_from_siblings(d) || computable_from_children_or_self(d);
+}
+
+/* helper for computable_tree: returns boolean : if no children or
+ * not computed or computable 
+ */
+function computable_from_children_or_self(d) {
+  // if no children and not computed
+  if(d.children == undefined || d.children.length == 0) {
+    return !d.computed;
+  }
+  
+  // if all children are computable then so is d
+  for(var i in d.children) {
+    if(!computable_tree(d.children[i])) {
+      return false;
+    }
+  }
+  
+  return true;
+}
+
+/* helper for computable_tree: returns boolean : if parent and all sibilings  
+ *   are computable
+ */
+function computable_from_siblings(d) {
+  if(!d.parent) return false;
+  if(d.parent.computed) return false;
+
+  var sibs = d.parent.children;
+  for(var i in sibs) {
+    var sib = sibs[i];
+    if(sib.id == d.id) continue;
+    
+    if(!computable_from_children_or_self(sib)) {
+      return false;
+    }
+  }
+  
+  // if it passed all those tests, it is computable from its siblings and
+  // parent
+  return true;
+}
+
+/*
 function _computable_tree(node) {
   if(node.children == undefined) {
-    return !node.computed;
+    // node.computable will be set iff its been determined from its parent
+    // and siblings
+    return !node.computed || node.computable;
   }
   
   var uncomputable_children = [];
   for(var i in node.children) {
-    if(!computable_tree(node.children[i])) {
-      uncomputable_children.push(node.children[i]);
+    var child = node.children[i];
+    // make sure child is marked as not computable for now
+    child.computable = undefined;
+    if(!computable_tree(child)) {
+      uncomputable_children.push(child);
     }
   }
   
@@ -731,6 +800,7 @@ function _computable_tree(node) {
     return false;
   }
 }
+*/
 
 /* remove computable attribute from all nodes in the tree. note that
  * this is different than the computed attribute
